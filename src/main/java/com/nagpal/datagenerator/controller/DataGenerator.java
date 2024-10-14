@@ -2,49 +2,56 @@ package com.nagpal.datagenerator.controller;
 
 import au.com.anthonybruno.Gen;
 import au.com.anthonybruno.definition.ResultDefinition;
-import com.github.javafaker.Faker;
+import lombok.extern.log4j.Log4j2;
+import net.datafaker.Faker;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController()
+import java.io.File;
+
+@RestController
+@Log4j2
 public class DataGenerator {
 
     @GetMapping("/data-generator/generate")
     public ResponseEntity<String> generateData(@RequestParam(defaultValue = "names") String type,
                                                @RequestParam(defaultValue = "10") int count,
-                                               @RequestParam(defaultValue = "csv") String format) {
+                                               @RequestParam String fileName) {
 
-
+        log.info("Generating data of type: {} and count: {}", type, count);
+        String destinationFolder = System.getProperty("user.home");
 
         switch (type) {
             case "names":
-                generateNamesData(count, format);
+                generateNamesData(count, destinationFolder, fileName);
                 break;
             case "city_temp":
-                generateCityTempratureData(count, format);
+                generateCityTemperatureData(count, destinationFolder, fileName);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown option");
         }
 
-        return ResponseEntity.ok("Data generated");
+        log.info("Data generated and saved to file");
+        return ResponseEntity.ok("Generated "+ count + " row of type: " + type +" and saved data to " +
+                destinationFolder + File.separator + fileName);
     }
 
-    private void generateCityTempratureData(int count, String format) {
+    private void generateCityTemperatureData(int count, String destination, String fileName) {
         Faker faker = new Faker();
 
         ResultDefinition resultDefinition = Gen.start()
                 .addField("City", ()-> faker.address().city())
-                .addField("Temprature", () -> faker.number().randomDouble(2, -99, 99))
-                .generate(10)
+                .addField("Temperature", () -> faker.number().randomDouble(1, -99, 99))
+                .generate(count)
                 .asCsv();
 
-        System.out.println(resultDefinition.toStringForm());
+        saveToFile(destination, fileName, resultDefinition);
     }
 
-    private void generateNamesData(int count, String format) {
+    private void generateNamesData(int count, String destination, String fileName) {
 
         Faker faker = new Faker();
 
@@ -56,6 +63,11 @@ public class DataGenerator {
                 .generate(count)
                 .asCsv();
 
-        resultDefinition.toFile("D:\\tmp\\fake-names.csv");
+        saveToFile(destination, fileName, resultDefinition);
+    }
+
+    private void saveToFile(String destination, String fileName, ResultDefinition resultDefinition) {
+        log.info("Saving data to file: {}", fileName);
+        resultDefinition.toFile(destination + File.separator + fileName);
     }
 }
